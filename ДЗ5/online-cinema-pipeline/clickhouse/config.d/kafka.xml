@@ -1,0 +1,10 @@
+<clickhouse>
+    <!-- Настройки librdkafka для всех Kafka-таблиц -->
+    <kafka>
+        <!-- новая consumer-группа читает топик с начала, а не только новые сообщения -->
+        <auto_offset_reset>earliest</auto_offset_reset>
+    </kafka>
+    <logger>
+        <level>warning</level>
+    </logger>
+</clickhouse>

@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: cinema
+    folder: Online Cinema
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards

@@ -1,0 +1,254 @@
+{
+  "uid": "cinema-analytics",
+  "title": "Online Cinema — аналитика",
+  "tags": [
+    "cinema",
+    "clickhouse"
+  ],
+  "timezone": "utc",
+  "editable": false,
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-14d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "table",
+      "title": "Retention Cohort Heatmap",
+      "description": "Когорты по дате первого просмотра (первый VIEW_STARTED). Day N — доля пользователей когорты, проявивших любую активность через N дней. Пустые ячейки — день ещё не завершён. Источник: cinema.daily_metrics (metric cohort_retention), считает aggregation-service.",
+      "gridPos": {
+        "h": 13,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT\n    toString(metric_date) AS \"Когорта\",\n    toUInt32(maxIf(value, metric_name = 'retention_cohort_size')) AS \"Пользователей\",\n    maxIfOrNull(value, metric_name = 'cohort_retention' AND dimension = 'day_0') AS \"Day 0\",\n    maxIfOrNull(value, metric_name = 'cohort_retention' AND dimension = 'day_1') AS \"Day 1\",\n    maxIfOrNull(value, metric_name = 'cohort_retention' AND dimension = 'day_2') AS \"Day 2\",\n    maxIfOrNull(value, metric_name = 'cohort_retention' AND dimension = 'day_3') AS \"Day 3\",\n    maxIfOrNull(value, metric_name = 'cohort_retention' AND dimension = 'day_4') AS \"Day 4\",\n    maxIfOrNull(value, metric_name = 'cohort_retention' AND dimension = 'day_5') AS \"Day 5\",\n    maxIfOrNull(value, metric_name = 'cohort_retention' AND dimension = 'day_6') AS \"Day 6\",\n    maxIfOrNull(value, metric_name = 'cohort_retention' AND dimension = 'day_7') AS \"Day 7\"\nFROM cinema.v_daily_metrics_latest\nWHERE metric_name IN ('cohort_retention', 'retention_cohort_size')\n  AND metric_date BETWEEN toDate($__fromTime) AND toDate($__toTime)\nGROUP BY metric_date\nHAVING maxIf(value, metric_name = 'retention_cohort_size') > 0\nORDER BY metric_date"
+        }
+      ],
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "footer": {
+          "show": false
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 0,
+          "min": 0,
+          "max": 1,
+          "color": {
+            "mode": "continuous-RdYlGr"
+          },
+          "custom": {
+            "align": "center",
+            "cellOptions": {
+              "type": "color-background",
+              "mode": "gradient"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Когорта"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Пользователей"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "auto"
+                }
+              },
+              {
+                "id": "unit",
+                "value": "none"
+              },
+              {
+                "id": "decimals",
+                "value": 0
+              },
+              {
+                "id": "custom.width",
+                "value": 130
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "type": "barchart",
+      "title": "Топ-10 фильмов за период",
+      "description": "Число начатых просмотров (VIEW_STARTED): сумма дневных топ-10 из metric top_movie_views.",
+      "gridPos": {
+        "h": 11,
+        "w": 14,
+        "x": 0,
+        "y": 13
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT dimension AS movie, toUInt64(sum(value)) AS views\nFROM cinema.v_daily_metrics_latest\nWHERE metric_name = 'top_movie_views'\n  AND metric_date BETWEEN toDate($__fromTime) AND toDate($__toTime)\nGROUP BY movie\nORDER BY views DESC, movie\nLIMIT 10"
+        }
+      ],
+      "options": {
+        "orientation": "horizontal",
+        "xField": "movie",
+        "showValue": "always",
+        "barWidth": 0.8,
+        "groupWidth": 0.7,
+        "xTickLabelRotation": 0,
+        "legend": {
+          "showLegend": false,
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "displayName": "Просмотры",
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "blue"
+          },
+          "custom": {
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "gradientMode": "none"
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "piechart",
+      "title": "Пользователи по устройствам",
+      "description": "Сумма дневных уникальных пользователей по типу устройства (metric device_users).",
+      "gridPos": {
+        "h": 11,
+        "w": 10,
+        "x": 14,
+        "y": 13
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "clickhouse"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "clickhouse"
+          },
+          "editorType": "sql",
+          "format": 1,
+          "queryType": "table",
+          "rawSql": "SELECT\n    sumIf(value, dimension = 'MOBILE')  AS \"Mobile\",\n    sumIf(value, dimension = 'DESKTOP') AS \"Desktop\",\n    sumIf(value, dimension = 'TV')      AS \"TV\",\n    sumIf(value, dimension = 'TABLET')  AS \"Tablet\"\nFROM cinema.v_daily_metrics_latest\nWHERE metric_name = 'device_users'\n  AND metric_date BETWEEN toDate($__fromTime) AND toDate($__toTime)"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": [
+            "sum"
+          ],
+          "fields": ""
+        },
+        "pieType": "donut",
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "showLegend": true,
+          "displayMode": "table",
+          "placement": "right",
+          "values": [
+            "value",
+            "percent"
+          ]
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "decimals": 0,
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      }
+    }
+  ]
+}
